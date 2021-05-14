@@ -8,6 +8,8 @@
 
 
 struct FAssetData;
+struct FSourceCodeFile;
+struct FNode;
 class USourceCodeAsset;
 class UExcludeDirectoriesFilterSettings;
 
@@ -244,4 +246,12 @@ public:
 		TArray<FNode>& List,
 		UExcludeDirectoriesFilterSettings* DirectoryFilterSettings
 	);
+
+	/**
+	 * @brief Checks if given path is under given directory or not
+	 * @param InPath
+	 * @param InDirectory
+	 * @return bool
+	 */
+	static bool IsUnderDir(const FString& InPath, const FString& InDirectory);
 };

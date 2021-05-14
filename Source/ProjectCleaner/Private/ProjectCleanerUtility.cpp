@@ -227,7 +227,7 @@ void ProjectCleanerUtility::FindAllSourceFiles(TArray<FSourceCodeFile>& SourceFi
 		if (PlatformFile.FileExists(*File))
 		{
 			FSourceCodeFile SourceCodeFile;
-			SourceCodeFile.Name = FName{FPaths::GetCleanFilename(File)};
+			SourceCodeFile.Name = FName{*FPaths::GetCleanFilename(File)};
 			SourceCodeFile.RelativeFilePath = File;
 			SourceCodeFile.AbsoluteFilePath = FPaths::ConvertRelativePathToFull(File);
 			FFileHelper::LoadFileToString(SourceCodeFile.Content, *File);
@@ -664,4 +664,23 @@ void ProjectCleanerUtility::RemoveAssetsExcludedByUser(
 	{
 		return RelatedAssets.Contains(Elem.PackageName);
 	});
+}
+
+bool ProjectCleanerUtility::IsUnderDir(const FString& InPath, const FString& InDirectory)
+{
+	FString Path = FPaths::ConvertRelativePathToFull(InPath);
+
+	FString Directory = FPaths::ConvertRelativePathToFull(InDirectory);
+	if (Directory.EndsWith(TEXT("/")))
+	{
+		Directory.RemoveAt(Directory.Len() - 1);
+	}
+
+#if PLATFORM_WINDOWS
+	int Compare = FCString::Strnicmp(*Path, *Directory, Directory.Len());
+#else
+	int Compare = FCString::Strncmp(*Path, *Directory, Directory.Len());
+#endif
+
+	return Compare == 0 && (Path.Len() == Directory.Len() || Path[Directory.Len()] == '/');
 }

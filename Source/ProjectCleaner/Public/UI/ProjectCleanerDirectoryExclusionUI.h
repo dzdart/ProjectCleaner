@@ -3,6 +3,7 @@
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "IDetailsView.h"
 #include "ProjectCleanerDirectoryExclusionUI.generated.h"
 
 UCLASS(Transient)

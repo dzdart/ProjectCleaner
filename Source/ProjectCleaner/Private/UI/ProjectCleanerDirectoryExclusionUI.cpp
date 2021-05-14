@@ -1,4 +1,8 @@
 ﻿#include "UI/ProjectCleanerDirectoryExclusionUI.h"
+#include "PropertyEditorModule.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Modules/ModuleManager.h"
+#include "Widgets/SUserWidget.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 

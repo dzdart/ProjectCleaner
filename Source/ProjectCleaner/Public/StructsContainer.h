@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "ProjectCleanerUtility.h"
 
 struct FCleaningStats
 {
@@ -93,8 +94,8 @@ struct FNode
 			)
 			{
 				const FString FilePathOnDisk = FPaths::ConvertRelativePathToFull(PackageFile);
-				const bool UnderEnginePluginDir = FPaths::IsUnderDirectory(FilePathOnDisk, FPaths::EnginePluginsDir());
-				const bool UnderProjectPluginDir = FPaths::IsUnderDirectory(FilePathOnDisk, FPaths::ProjectPluginsDir());
+				const bool UnderEnginePluginDir = ProjectCleanerUtility::IsUnderDir(FilePathOnDisk, FPaths::EnginePluginsDir());
+				const bool UnderProjectPluginDir = ProjectCleanerUtility::IsUnderDir(FilePathOnDisk, FPaths::ProjectPluginsDir());
 				if (UnderEnginePluginDir || UnderProjectPluginDir)
 				{
 					return true;

@@ -6,6 +6,11 @@
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Toolkits/GlobalEditorCommonCommands.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "IDetailsView.h"
+#include "Editor/EditorEngine.h"
+#include "EditorStyleSet.h"
+#include "Toolkits/AssetEditorManager.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -64,10 +69,7 @@ TSharedPtr<SWidget> SProjectCleanerUnusedAssetsBrowserUI::OnGetAssetContextMenu(
 
 void SProjectCleanerUnusedAssetsBrowserUI::OnAssetDblClicked(const FAssetData& AssetData) const
 {
-	TArray<FName> AssetNames;
-	AssetNames.Add(AssetData.ObjectPath);
-
-	GEditor->GetEditorSubsystem<UAssetEditorSubsystem>()->OpenEditorsForAssets(AssetNames);
+	FAssetEditorManager::Get().OpenEditorForAsset(AssetData.ObjectPath.ToString());
 }
 
 void SProjectCleanerUnusedAssetsBrowserUI::FindInContentBrowser() const
@@ -111,7 +113,6 @@ void SProjectCleanerUnusedAssetsBrowserUI::RefreshUIContent()
 	Config.bAddFilterUI = true;
 	Config.bShowPathInColumnView = true;
 	Config.bSortByPathInColumnView = true;
-	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
 	Config.bCanShowDevelopersFolder = false;
 	Config.bAllowDragging = false;	

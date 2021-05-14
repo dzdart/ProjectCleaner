@@ -2,6 +2,10 @@
 // Engine Headers
 #include "IContentBrowserSingleton.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
+#include "Engine/World.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SUserWidget.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
@@ -18,7 +22,6 @@ void SProjectCleanerCorruptedFilesUI::RefreshUIContent()
 	Config.bAddFilterUI = true;
 	Config.bShowPathInColumnView = true;
 	Config.bSortByPathInColumnView = true;
-	Config.bForceShowEngineContent = false;
 	Config.bShowBottomToolbar = true;
 	Config.bCanShowDevelopersFolder = false;
 	Config.bAllowDragging = false;
