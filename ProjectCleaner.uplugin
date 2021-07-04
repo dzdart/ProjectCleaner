@@ -10,7 +10,7 @@
 	"DocsURL": "https://github.com/ashe23/ProjectCleaner",
 	"MarketplaceURL": "",
 	"SupportURL": "",
-	"EngineVersion": "4.26.0",
+	"EngineVersion": "4.25.0",
 	"CanContainContent": false,
 	"EnabledByDefault" : true,
 	"IsBetaVersion": false,

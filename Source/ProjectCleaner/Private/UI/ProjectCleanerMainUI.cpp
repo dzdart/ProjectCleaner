@@ -13,7 +13,7 @@
 #include "StructsContainer.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistryModule.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"

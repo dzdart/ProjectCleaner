@@ -3,7 +3,7 @@
 #include "CoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "GenericPlatform/GenericPlatformFile.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistryModule.h"
 #include "Factories/MaterialFactoryNew.h"
 #include "ObjectTools.h"
 #include "Core/ProjectCleanerUtility.h"
@@ -34,7 +34,7 @@ struct FCleanerAssetHelper
 		const FString PackageName = PackagePath + TEXT("/") + AssetName;
 		const EObjectFlags Flags = RF_Public | RF_Standalone;
 		
-		UPackage* Package = CreatePackage(*PackageName);
+		UPackage* Package = CreatePackage(NULL,*PackageName);
 		if (!Package) return;
 		
 		UFactory* FactoryInst = NewObject<TFactoryClass>();

@@ -99,7 +99,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 		return;
 	}
 
-	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)

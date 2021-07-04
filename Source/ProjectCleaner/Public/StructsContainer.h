@@ -50,9 +50,6 @@ public:
 
 	UPROPERTY(DisplayName = "Line where asset used", VisibleAnywhere, Category="AssetUsedIndirectly")
 	int32 LineNum;
-
-	UPROPERTY(DisplayName = "AssetData", VisibleAnywhere, Category="AssetUsedIndirectly")
-	FAssetData AssetData;
 };
 
 UCLASS(Transient)
