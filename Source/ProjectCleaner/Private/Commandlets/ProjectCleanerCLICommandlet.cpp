@@ -3,7 +3,7 @@
 #include "ProjectCleanerCLICommandlet.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Kismet/KismetStringLibrary.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistryModule.h"
 #include "Core/ProjectCleanerDataManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogProjectCleanerCLI, Display, All);
@@ -50,7 +50,10 @@ int32 UProjectCleanerCLICommandlet::Main(const FString& Params)
 		}
 		
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Deleted: %d assets"), CleanerDataManager.DeleteAllUnusedAssets());
-		UE_LOG(LogProjectCleanerCLI, Display, TEXT("Deleted: %d empty folders"), CleanerDataManager.DeleteEmptyFolders());
+		if (bAutomaticallyDeleteEmptyFolders)
+		{
+			UE_LOG(LogProjectCleanerCLI, Display, TEXT("Deleted: %d empty folders"), CleanerDataManager.DeleteEmptyFolders());
+		}
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("=========  After Cleanup    ========"));
 		UE_LOG(LogProjectCleanerCLI, Display, TEXT("===================================="));
@@ -81,7 +84,7 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 	// -Check - false
 	// -ScanDevContent - false
 	// -DeleteEmptyFolders - true
-	// -ExcludeAssets - empty // todo:ashe23
+	// -ExcludeAssets - empty
 	// -ExcludeAssetsInPath - empty 
 	// -ExcludeAssetWithClass - empty
 	if (Switches.Num() == 0 && Parameters.Num() == 1 && Tokens.Num() == 0) // Parameters contain -run=ProjectCleanerCLI - argument only
@@ -152,15 +155,17 @@ void UProjectCleanerCLICommandlet::ParseCommandLinesArguments(const FString& Par
 			TArray<FString> ParsedArray;
 			Param.Value.ParseIntoArray(ParsedArray, TEXT(","), true);
 
-			for (const auto& Path : ParsedArray)
+			for (const auto& ObjectPath : ParsedArray)
 			{
-				if (AssetRegistry.Get().PathExists(Path))
+				// checking if given asset ObjectPath are valid
+				const FAssetData AssetData = AssetRegistry.Get().GetAssetByObjectPath(FName{*ObjectPath});
+				if (AssetData.IsValid())
 				{
-					ExcludedPaths.AddUnique(Path);
+					ExcludedAssets.AddUnique(ObjectPath);
 				}
 				else
 				{
-					InvalidPaths.Add(Path);
+					InvalidObjectPaths.Add(ObjectPath);
 				}
 			}
 		}
