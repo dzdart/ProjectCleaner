@@ -5,7 +5,7 @@
 #include "Core/ProjectCleanerManager.h"
 #include "StructsContainer.h"
 // Engine Headers
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistryModule.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SScrollBorder.h"

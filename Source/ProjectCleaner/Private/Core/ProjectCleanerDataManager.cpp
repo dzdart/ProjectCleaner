@@ -4,11 +4,10 @@
 #include "ProjectCleaner.h"
 #include "Core/ProjectCleanerUtility.h"
 // Engine Headers
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetRegistryModule.h"
 #include "AssetToolsModule.h"
-#include "AssetViewUtils.h"
 #include "ObjectTools.h"
-#include "AssetRegistry/AssetData.h"
+#include "AssetData.h"
 #include "Engine/AssetManager.h"
 #include "Engine/AssetManagerSettings.h"
 #include "Engine/MapBuildDataRegistry.h"
@@ -922,15 +921,15 @@ void FProjectCleanerDataManager::FillBucketWithAssets(TArray<FAssetData>& Bucket
 
 bool FProjectCleanerDataManager::PrepareBucketForDeletion(const TArray<FAssetData>& Bucket, TArray<UObject*>& LoadedAssets)
 {
-	TArray<FString> ObjectPaths;
-	ObjectPaths.Reserve(Bucket.Num());
-	
+	LoadedAssets.Reserve(Bucket.Num());
 	for (const auto& Asset : Bucket)
 	{
-		ObjectPaths.Add(Asset.ObjectPath.ToString());
+		UObject* Object = Asset.GetAsset();
+		if (!Object) continue;
+		LoadedAssets.Add(Object);
 	}
-	
-	return AssetViewUtils::LoadAssetsIfNeeded(ObjectPaths, LoadedAssets, false, true);
+
+	return LoadedAssets.Num() == Bucket.Num();
 }
 
 int32 FProjectCleanerDataManager::DeleteBucket(const TArray<UObject*>& LoadedAssets)
@@ -947,6 +946,8 @@ int32 FProjectCleanerDataManager::DeleteBucket(const TArray<UObject*>& LoadedAss
 
 void FProjectCleanerDataManager::CleanupAfterDelete()
 {
+	ProjectCleanerUtility::UpdateAssetRegistry(true);
+	
 	AnalyzeProject();
 
 	if (!IsRunningCommandlet())

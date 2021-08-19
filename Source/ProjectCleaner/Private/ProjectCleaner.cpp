@@ -7,7 +7,6 @@
 // Engine Headers
 #include "ToolMenus.h"
 #include "AssetToolsModule.h"
-#include "AssetRegistry/AssetRegistryModule.h"
 
 DEFINE_LOG_CATEGORY(LogProjectCleaner);
 
@@ -77,7 +76,7 @@ void FProjectCleanerModule::PluginButtonClicked()
 {
 	CleanerManager.Update();
 	
-	FGlobalTabmanager::Get()->TryInvokeTab(ProjectCleanerTabName);
+	FGlobalTabmanager::Get()->InvokeTab(ProjectCleanerTabName);
 }
 
 TSharedRef<SDockTab> FProjectCleanerModule::OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs)
