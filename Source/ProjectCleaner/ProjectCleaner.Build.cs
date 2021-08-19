@@ -19,6 +19,8 @@ public class ProjectCleaner : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new string[]
 			{
+				"ProjectCleaner/Private",
+				"ProjectCleaner/Private/Commandlets",
 			}
 		);
 
@@ -48,6 +50,7 @@ public class ProjectCleaner : ModuleRules
 				"UnrealEd",
 				"ToolMenus",
 				"AssetTools",
+				"RenderCore",
 			}
 		);
 

@@ -2,9 +2,9 @@
 
 #pragma once
 
+#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Modules/ModuleInterface.h"
-#include "Core/ProjectCleanerManager.h"
 #include "CoreMinimal.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
@@ -12,22 +12,19 @@ DECLARE_LOG_CATEGORY_EXTERN(LogProjectCleaner, Log, All);
 class FProjectCleanerModule : public IModuleInterface
 {
 public:
-	FProjectCleanerModule();
-	/** IModuleInterface implementation */
+	/* IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
 	virtual bool IsGameModule() const override;
 private:
-    /** Module **/	
+	/* Module */
 	void RegisterMenus();
 	void PluginButtonClicked();
 	TSharedRef<SDockTab> OnSpawnPluginTab(const FSpawnTabArgs& SpawnTabArgs);
 	
-	/** UI data */
+	/* UI data */
 	TSharedPtr<FUICommandList> PluginCommands;
-	TWeakPtr<class SProjectCleanerMainUI> CleanerMainUI;
-	class ProjectCleanerManager CleanerManager;
-	
-	/** Other Engine Modules **/
-	class FAssetRegistryModule* AssetRegistry;
+
+	/* Cleaner Manager */
+	class FProjectCleanerManager CleanerManager;
 };

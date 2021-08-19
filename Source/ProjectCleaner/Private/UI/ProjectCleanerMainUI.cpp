@@ -2,160 +2,159 @@
 
 #include "UI/ProjectCleanerMainUI.h"
 #include "UI/ProjectCleanerStyle.h"
-#include "UI/ProjectCleanerBrowserStatisticsUI.h"
+#include "UI/ProjectCleanerStatisticsUI.h"
 #include "UI/ProjectCleanerUnusedAssetsBrowserUI.h"
 #include "UI/ProjectCleanerNonEngineFilesUI.h"
 #include "UI/ProjectCleanerConfigsUI.h"
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "UI/ProjectCleanerExcludeOptionsUI.h"
 #include "UI/ProjectCleanerIndirectAssetsUI.h"
 #include "UI/ProjectCleanerExcludedAssetsUI.h"
-#include "StructsContainer.h"
+#include "Core/ProjectCleanerManager.h"
+#include "UI/ProjectCleanerNotificationManager.h"
 // Engine Headers
 #include "ToolMenus.h"
-#include "AssetRegistryModule.h"
+#include "Components/SlateWrapperTypes.h"
+#include "Components/WidgetSwitcher.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Framework/Docking/TabManager.h"
-#include "UI/ProjectCleanerNotificationManager.h"
 
 static const FName UnusedAssetsTab = FName{ TEXT("UnusedAssetsTab") };
 static const FName IndirectAssetsTab = FName{ TEXT("IndirectAssetsTab") };
 static const FName NonEngineFilesTab = FName{ TEXT("NonEngineFilesTab") };
 static const FName CorruptedFilesTab = FName{ TEXT("CorruptedFilesTab") };
+static const FName ExcludedAssetsTab = FName{ TEXT("ExcludedAssetsTab") };
+
+#define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerMainUI::Construct(const FArguments& InArgs)
 {
-	InitTabs();
-
 	if (InArgs._CleanerManager)
 	{
-		CleanerManager = InArgs._CleanerManager;
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
 	ensure(CleanerManager);
-
-	CleanerManager->UpdateData();
-
+	CleanerManager->OnCleanerManagerUpdated = FOnCleanerManagerUpdated::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnCleanerManagerUpdated
+	);
+	
+	InitTabs();
+	
 	ensure(TabManager.IsValid());
 
 	const TSharedRef<SWidget> TabContents = TabManager->RestoreFrom(
 		TabLayout.ToSharedRef(),
 		TSharedPtr<SWindow>()
 	).ToSharedRef();
-
-	const auto ExcludedAssetsUIRef = SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
-		.ExcludedAssets(&CleanerManager->GetCleanerData()->ExcludedAssets)
-		.LinkedAssets(&CleanerManager->GetCleanerData()->LinkedAssets)
-		.CleanerConfigs(CleanerManager->GetCleanerConfigs());
-	
-	ExcludedAssetsUIRef->OnUserIncludedAssets = FOnUserIncludedAsset::CreateRaw(
-		this,
-		&SProjectCleanerMainUI::OnUserIncludedAssets
-	);
 	
 	ChildSlot
 	[
-		SNew(SBorder)
+		SNew(SWidgetSwitcher)
+		.IsEnabled(this, &SProjectCleanerMainUI::IsWidgetEnabled)
+		.WidgetIndex_Raw(this , &SProjectCleanerMainUI::GetDefaultWidgetIndex)
+		+ SWidgetSwitcher::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
 		[
-			SNew(SSplitter)
-			+ SSplitter::Slot()
-			.Value(0.35f)
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.Padding(FMargin{ 20.0f })
+			.FillHeight(1.0f)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				.Padding(FMargin{ 20.0f })
+				SNew(SSplitter)
+				.Style(FEditorStyle::Get(), "ContentBrowser.Splitter")
+				.PhysicalSplitterHandleSize(5.0f)
+				+ SSplitter::Slot()
+				.Value(0.35f)
 				[
-					SNew(SScrollBox)
-					+ SScrollBox::Slot()
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
 					[
-						SNew(SBorder)
-						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
+						SNew(SScrollBox)
+						.ScrollWhenFocusChanges(EScrollWhenFocusChanges::AnimatedScroll)
+						.AnimateWheelScrolling(true)
+						.AllowOverscroll(EAllowOverscroll::No)
+						+ SScrollBox::Slot()
 						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{ 20.0f, 20.0f })
-							.AutoHeight()
+							SNew(SBorder)
+							.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
 							[
-								SAssignNew(StatisticsUI, SProjectCleanerBrowserStatisticsUI)
-								.CleanerData(CleanerManager->GetCleanerData())
-							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{ 20.0f, 20.0f })
-							.AutoHeight()
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
+								SNew(SVerticalBox)
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{ 20.0f, 20.0f })
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Refresh"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnRefreshBtnClick)
+									SAssignNew(StatisticsUI, SProjectCleanerStatisticsUI)
+									.CleanerManager(CleanerManager)
 								]
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
-								.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{ 20.0f, 20.0f })
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Delete Unused Assets"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick)
+									SNew(SHorizontalBox)
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Refresh"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnRefreshBtnClick)
+									]
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									.Padding(FMargin{ 40.0f, 0.0f, 40.0f, 0.0f })
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Delete Unused Assets"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick)
+									]
+									+ SHorizontalBox::Slot()
+									.FillWidth(1.0f)
+									[
+										SNew(SButton)
+										.HAlign(HAlign_Center)
+										.VAlign(VAlign_Center)
+										.Text(FText::FromString("Delete Empty Folders"))
+										.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteEmptyFolderClick)
+									]
 								]
-								+ SHorizontalBox::Slot()
-								.FillWidth(1.0f)
+								+ SVerticalBox::Slot()
+								.Padding(FMargin{20.0f, 5.0f})
+								.AutoHeight()
 								[
-									SNew(SButton)
-									.HAlign(HAlign_Center)
-									.VAlign(VAlign_Center)
-									.Text(FText::FromString("Delete Empty Folders"))
-									.OnClicked_Raw(this, &SProjectCleanerMainUI::OnDeleteEmptyFolderClick)
+									SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
+									.CleanerConfigs(CleanerManager->GetCleanerConfigs())
 								]
-							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 5.0f})
-							.AutoHeight()
-							[
-								SAssignNew(CleanerConfigsUI, SProjectCleanerConfigsUI)
-								.CleanerConfigs(CleanerManager->GetCleanerConfigs())
-							]
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 5.0f})
-							.AutoHeight()
-							[
-								SAssignNew(ExcludeOptionUI, SProjectCleanerExcludeOptionsUI)
-								.ExcludeOptions(CleanerManager->GetExcludeOptions())
-							]
-						]
-					]
-					+ SScrollBox::Slot()
-					.Padding(FMargin{0.0f, 20.0f})
-					[
-						SNew(SBorder)
-						.BorderImage(FEditorStyle::GetBrush("ToolPanel.GroupBorder"))
-						[
-							SNew(SVerticalBox)
-							+ SVerticalBox::Slot()
-							.Padding(FMargin{20.0f, 10.0f})
-							.AutoHeight()
-							[
-								ExcludedAssetsUIRef
 							]
 						]
 					]
 				]
-			]
-			+ SSplitter::Slot()
-			.Value(0.65f)
-			[
-				SNew(SOverlay)
-				+ SOverlay::Slot()
-				.Padding(FMargin{20.0f})
+				+ SSplitter::Slot()
 				[
 					TabContents
 				]
+			]
+		]
+		+ SWidgetSwitcher::Slot()
+		.HAlign(HAlign_Fill)
+		.VAlign(VAlign_Fill)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.HAlign(HAlign_Center)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Center)
+				.Font(FProjectCleanerStyle::Get().GetFontStyle("ProjectCleaner.Font.Light30"))
+				.Text(LOCTEXT("project_cleaner_asset_registry_still_working", "Asset registry still working. Please wait while scan completes"))
 			]
 		]
 	];
@@ -167,6 +166,15 @@ SProjectCleanerMainUI::~SProjectCleanerMainUI()
 	TabManager->UnregisterTabSpawner(IndirectAssetsTab);
 	TabManager->UnregisterTabSpawner(NonEngineFilesTab);
 	TabManager->UnregisterTabSpawner(CorruptedFilesTab);
+	TabManager->UnregisterTabSpawner(ExcludedAssetsTab);
+	CleanerManager->OnCleanerManagerUpdated.Unbind();
+	CleanerManager = nullptr;
+}
+
+void SProjectCleanerMainUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
+{
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
 }
 
 void SProjectCleanerMainUI::InitTabs()
@@ -183,8 +191,8 @@ void SProjectCleanerMainUI::InitTabs()
 		(
 			FTabManager::NewStack()
 			->SetSizeCoefficient(0.4f)
-			->SetHideTabWell(true)
 			->AddTab(UnusedAssetsTab, ETabState::OpenedTab)
+			->AddTab(ExcludedAssetsTab, ETabState::OpenedTab)
 			->AddTab(IndirectAssetsTab, ETabState::OpenedTab)
 			->AddTab(NonEngineFilesTab, ETabState::OpenedTab)
 			->AddTab(CorruptedFilesTab, ETabState::OpenedTab)
@@ -195,6 +203,10 @@ void SProjectCleanerMainUI::InitTabs()
 	TabManager->RegisterTabSpawner(UnusedAssetsTab, FOnSpawnTab::CreateRaw(
 		this,
 		&SProjectCleanerMainUI::OnUnusedAssetTabSpawn)
+	);
+	TabManager->RegisterTabSpawner(ExcludedAssetsTab, FOnSpawnTab::CreateRaw(
+		this,
+		&SProjectCleanerMainUI::OnExcludedAssetsTabSpawn)
 	);
 	TabManager->RegisterTabSpawner(IndirectAssetsTab, FOnSpawnTab::CreateRaw(
 		this,
@@ -210,195 +222,126 @@ void SProjectCleanerMainUI::InitTabs()
 	);
 }
 
-void SProjectCleanerMainUI::Update() const
+void SProjectCleanerMainUI::OnCleanerManagerUpdated() const
 {
-	CleanerManager->UpdateData();
-	UpdateUIData();
-}
-
-void SProjectCleanerMainUI::UpdateUIData() const
-{
-	if (StatisticsUI.IsValid())
-	{
-		StatisticsUI.Pin()->SetData(*CleanerManager->GetCleanerData());
-	}
-
 	if (UnusedAssetsBrowserUI.IsValid())
 	{
-		UnusedAssetsBrowserUI.Pin()->SetUIData(
-			CleanerManager->GetCleanerData()->UnusedAssets,
-			CleanerManager->GetCleanerConfigs(),
-			CleanerManager->GetCleanerData()->PrimaryAssetClasses
-		);
-	}
-
-	if (NonEngineFilesUI.IsValid())
-	{
-		NonEngineFilesUI.Pin()->SetNonEngineFiles(CleanerManager->GetCleanerData()->NonEngineFiles);
-	}
-
-	if (CorruptedFilesUI.IsValid())
-	{
-		CorruptedFilesUI.Pin()->SetCorruptedFiles(CleanerManager->GetCleanerData()->CorruptedFiles);
-	}
-
-	if (IndirectAssetsUI.IsValid())
-	{
-		IndirectAssetsUI.Pin()->SetIndirectFiles(CleanerManager->GetCleanerData()->IndirectFileInfos);
+		UnusedAssetsBrowserUI.Pin()->UpdateUI();
 	}
 
 	if (ExcludedAssetsUI.IsValid())
 	{
-		ExcludedAssetsUI.Pin()->SetUIData(
-			CleanerManager->GetCleanerData()->ExcludedAssets,
-			CleanerManager->GetCleanerData()->LinkedAssets,
-			CleanerManager->GetCleanerConfigs()
-		);
+		ExcludedAssetsUI.Pin()->UpdateUI();
 	}
+
+	if (IndirectAssetsUI.IsValid())
+	{
+		IndirectAssetsUI.Pin()->UpdateUI();
+	}
+
+	if (NonEngineFilesUI.IsValid())
+	{
+		NonEngineFilesUI.Pin()->UpdateUI();
+	}
+
+	if (CorruptedFilesUI.IsValid())
+	{
+		CorruptedFilesUI.Pin()->UpdateUI();
+	}
+}
+
+bool SProjectCleanerMainUI::IsWidgetEnabled() const
+{
+	return !CleanerManager->GetDataManager().IsLoadingAssets();
+}
+
+int32 SProjectCleanerMainUI::GetDefaultWidgetIndex() const
+{
+	if (CleanerManager->GetDataManager().IsLoadingAssets())
+	{
+		return 1;
+	}
+
+	return 0;
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnUnusedAssetTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
-	const auto UnusedAssetsUIRef =
-		SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
-		.PrimaryAssetClasses(&CleanerManager->GetCleanerData()->PrimaryAssetClasses)
-		.UnusedAssets(&CleanerManager->GetCleanerData()->UnusedAssets)
-		.CleanerConfigs(CleanerManager->GetCleanerConfigs());
-	
-	UnusedAssetsUIRef->OnUserDeletedAssets = FOnUserDeletedAssets::CreateRaw(
-		this,
-		&SProjectCleanerMainUI::OnUserDeletedAssets
-	);
-	
-	UnusedAssetsUIRef->OnUserExcludedAssets = FOnUserExcludedAssets::CreateRaw(
-		this,
-		&SProjectCleanerMainUI::OnUserExcludedAssets
-	);
-	
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
 		.Label(NSLOCTEXT("UnusedAssetsTab", "TabTitle", "Unused Assets"))
+		.ShouldAutosize(true)
 		[
-			UnusedAssetsUIRef
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				SAssignNew(UnusedAssetsBrowserUI, SProjectCleanerUnusedAssetsBrowserUI)
+				.CleanerManager(CleanerManager)
+			]
+		];
+}
+
+TSharedRef<SDockTab> SProjectCleanerMainUI::OnExcludedAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
+{
+	return SNew(SDockTab)		
+		.TabRole(ETabRole::NomadTab)
+		.Label(NSLOCTEXT("ExcludedAssetsTab", "TabTitle", "Excluded Assets"))
+		.ShouldAutosize(true)
+		[
+			SNew(SOverlay)
+			+ SOverlay::Slot()
+			.Padding(20.0f)
+			[
+				SAssignNew(ExcludedAssetsUI, SProjectCleanerExcludedAssetsUI)
+				.CleanerManager(CleanerManager)
+			]
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnNonEngineFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
+		.TabRole(ETabRole::NomadTab)
 		.Label(NSLOCTEXT("NonEngineFilesTab", "TabTitle", "Non Engine Files"))
 		[
 			SAssignNew(NonEngineFilesUI, SProjectCleanerNonEngineFilesUI)
-			.NonEngineFiles(&CleanerManager->GetCleanerData()->NonEngineFiles)
+			.CleanerManager(CleanerManager)
 		];
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnCorruptedFilesTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
-		.Label(NSLOCTEXT("CorruptedFilesTab", "TabTitle", "Corrupted Files"))
+		.TabRole(ETabRole::NomadTab)
+		.Label(NSLOCTEXT("CorruptedAssetsTab", "TabTitle", "Corrupted Assets"))
 		[
 			SAssignNew(CorruptedFilesUI, SProjectCleanerCorruptedFilesUI)
-			.CorruptedFiles(&CleanerManager->GetCleanerData()->CorruptedFiles)
+			.CleanerManager(CleanerManager)
 		];
-
 }
 
 TSharedRef<SDockTab> SProjectCleanerMainUI::OnIndirectAssetsTabSpawn(const FSpawnTabArgs& SpawnTabArgs)
 {
 	return SNew(SDockTab)
-		.TabRole(ETabRole::PanelTab)
-		.OnCanCloseTab_Lambda([] {return false; })
-		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Assets Used Indirectly"))
+		.TabRole(ETabRole::NomadTab)
+		.Label(NSLOCTEXT("IndirectAssetsTab", "TabTitle", "Indirectly used assets"))
 		[
 			SAssignNew(IndirectAssetsUI, SProjectCleanerIndirectAssetsUI)
-			.IndirectFileInfos(&CleanerManager->GetCleanerData()->IndirectFileInfos)
+			.CleanerManager(CleanerManager)
 		];
-}
-
-void SProjectCleanerMainUI::OnUserDeletedAssets() const
-{
-	Update();
-}
-
-void SProjectCleanerMainUI::OnUserExcludedAssets(const TArray<FAssetData>& Assets) const
-{
-	if (!Assets.Num()) return;
-	
-	for (const auto& Asset : Assets)
-	{
-		CleanerManager->GetCleanerData()->UserExcludedAssets.AddUnique(Asset);
-	}
-	
-	Update();
-}
-
-void SProjectCleanerMainUI::OnUserIncludedAssets(const TArray<FAssetData>& Assets, const bool CleanFilters) const
-{
-	if (!Assets.Num()) return;
-
-	if (CleanFilters)
-	{
-		CleanerManager->GetCleanerData()->UserExcludedAssets.Empty();
-		CleanerManager->GetCleanerData()->ExcludedAssets.Empty();
-		CleanerManager->GetCleanerData()->LinkedAssets.Empty();
-		CleanerManager->GetExcludeOptions()->Classes.Empty();
-		CleanerManager->GetExcludeOptions()->Paths.Empty();
-	}
-	else
-	{
-		// if user tries to include assets that are filtered by path or class,
-		// we wont include them and notify user about it
-		TArray<FAssetData> AssetsExcludedByFilter;
-		bool ShowNotification = false;
-		for (const auto& Asset : Assets)
-		{
-			if (CleanerManager->IsExcludedByClass(Asset))
-			{
-				AssetsExcludedByFilter.AddUnique(Asset);
-				ShowNotification = true;
-			}
-			
-			if (CleanerManager->IsExcludedByPath(Asset))
-			{
-				ShowNotification = true;
-				AssetsExcludedByFilter.AddUnique(Asset);
-			}
-		}
-
-		if (ShowNotification)
-		{
-			ProjectCleanerNotificationManager::AddTransient(
-				FText::FromString(FStandardCleanerText::CantIncludeSomeAssets),
-				SNotificationItem::CS_None,
-				3.0f
-			);
-		}
-		
-		CleanerManager->GetCleanerData()->UserExcludedAssets.RemoveAllSwap([&](const FAssetData& Elem)
-		{
-			return Assets.Contains(Elem) && !AssetsExcludedByFilter.Contains(Elem);
-		});
-	}
-
-	Update();
 }
 
 FReply SProjectCleanerMainUI::OnRefreshBtnClick() const
 {
-	Update();
-	
+	CleanerManager->Update();
+
 	return FReply::Handled();
 }
 
 FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick() const
 {
-	if (CleanerManager->GetCleanerData()->UnusedAssets.Num() == 0)
+	if (CleanerManager->GetUnusedAssets().Num() == 0)
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::NoAssetsToDelete),
@@ -408,25 +351,24 @@ FReply SProjectCleanerMainUI::OnDeleteUnusedAssetsBtnClick() const
 	
 		return FReply::Handled();
 	}
-
-	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+	
+	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
 		FText::FromString(FStandardCleanerText::AssetsDeleteWindowTitle),
 		FText::FromString(FStandardCleanerText::AssetsDeleteWindowContent)
 	);
-	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	if (ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
 	{
 		return FReply::Handled();
 	}
-
-	CleanerManager->DeleteUnusedAssets();
-	UpdateUIData();
+	
+	CleanerManager->DeleteAllUnusedAssets();
 	
 	return FReply::Handled();
 }
 
 FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 {
-	if (CleanerManager->GetCleanerData()->EmptyFolders.Num() == 0)
+	if (CleanerManager->GetEmptyFolders().Num() == 0)
 	{
 		ProjectCleanerNotificationManager::AddTransient(
 			FText::FromString(FStandardCleanerText::NoEmptyFolderToDelete),
@@ -436,32 +378,19 @@ FReply SProjectCleanerMainUI::OnDeleteEmptyFolderClick() const
 		
 		return FReply::Handled();
 	}
-
-	const auto ConfirmationWindowStatus = ShowConfirmationWindow(
+	
+	const auto ConfirmationWindowStatus = ProjectCleanerNotificationManager::ShowConfirmationWindow(
 		FText::FromString(FStandardCleanerText::EmptyFolderWindowTitle),
 		FText::FromString(FStandardCleanerText::EmptyFolderWindowContent)
 	);
-	if (IsConfirmationWindowCanceled(ConfirmationWindowStatus))
+	if (ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(ConfirmationWindowStatus))
 	{
 		return FReply::Handled();
 	}
-
+	
 	CleanerManager->DeleteEmptyFolders();
-	UpdateUIData();
 
 	return FReply::Handled();
 }
 
-EAppReturnType::Type SProjectCleanerMainUI::ShowConfirmationWindow(const FText& Title, const FText& ContentText) const
-{
-	return FMessageDialog::Open(
-		EAppMsgType::YesNo,
-		ContentText,
-		&Title
-	);
-}
-
-bool SProjectCleanerMainUI::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
-{
-	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
-}
+#undef LOCTEXT_NAMESPACE

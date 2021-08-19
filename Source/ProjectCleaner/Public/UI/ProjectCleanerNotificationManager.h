@@ -8,7 +8,6 @@
 
 class FSlateNotificationManager;
 
-
 /**
  * 
  */
@@ -18,12 +17,14 @@ public:
 	/**
 	 * @brief Create new persistent notification, will be in memory until Reset function call
 	 * @param Text 
-	 * @param CompletionState 
+	 * @param CompletionState
+	 * @param NotificationPtr
 	 * @return 
 	 */
-	static TWeakPtr<SNotificationItem> Add(
-		const FString& Text,
-		const SNotificationItem::ECompletionState CompletionState
+	static void Add(
+		const FText& Text,
+		const SNotificationItem::ECompletionState CompletionState,
+		TWeakPtr<SNotificationItem>& NotificationPtr
 	);
 
 	/**
@@ -45,17 +46,32 @@ public:
 	 */
 	static void Update(TWeakPtr<SNotificationItem> NotificationManager, const FText& Text);
 
-	
 	/**
 	 * @brief Hides already existing notification
-	 * @param NotificationManager 
+	 * @param NotificationManager
+	 * @param CompletionState
 	 * @param FinalText 
 	 */
-	static void Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText);
+	static void Hide(TWeakPtr<SNotificationItem> NotificationManager, const SNotificationItem::ECompletionState CompletionState, const FText& FinalText);
 
 	/**
 	 * @brief Reset given notification
 	 * @param NotificationManager 
 	 */
 	static void Reset(TWeakPtr<SNotificationItem> NotificationManager);
+
+	/**
+	 * @brief Show Confirmation Window with given Title and ContextText
+	 * @param Title 
+	 * @param ContentText 
+	 * @return EAppReturnType
+	 */
+	static EAppReturnType::Type ShowConfirmationWindow(const FText& Title, const FText& ContentText);
+
+	/**
+	 * @brief Check if Confirmation Window cancelled by user
+	 * @param Status 
+	 * @return bool
+	 */
+	static bool IsConfirmationWindowCanceled(EAppReturnType::Type Status);
 };

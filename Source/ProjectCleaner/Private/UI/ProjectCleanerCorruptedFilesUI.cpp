@@ -1,8 +1,9 @@
 ﻿// Copyright 2021. Ashot Barkhudaryan. All Rights Reserved.
 
 #include "UI/ProjectCleanerCorruptedFilesUI.h"
-#include "Core/ProjectCleanerUtility.h"
 #include "UI/ProjectCleanerStyle.h"
+#include "Core/ProjectCleanerUtility.h"
+#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 
@@ -10,9 +11,9 @@
 
 void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._CorruptedFiles)
+	if (InArgs._CleanerManager)
 	{
-		SetCorruptedFiles(*InArgs._CorruptedFiles);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
 	ChildSlot
@@ -95,16 +96,26 @@ void SProjectCleanerCorruptedFilesUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles)
+void SProjectCleanerCorruptedFilesUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
-	CorruptedFiles.Reset();
-	CorruptedFiles.Reserve(NewCorruptedFiles.Num());
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
+	
+	UpdateUI();
+}
 
-	for (const auto File : NewCorruptedFiles)
+void SProjectCleanerCorruptedFilesUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+	
+	CorruptedFiles.Reset();
+	CorruptedFiles.Reserve(CleanerManager->GetCorruptedAssets().Num());
+
+	for (const auto File : CleanerManager->GetCorruptedAssets())
 	{
 		const auto& CorruptedFile = NewObject<UCorruptedFile>();
-		CorruptedFile->Name = FPaths::GetBaseFilename(File);
-		CorruptedFile->AbsolutePath = File;
+		CorruptedFile->Name = FPaths::GetBaseFilename(File.ToString());
+		CorruptedFile->AbsolutePath = ProjectCleanerUtility::ConvertInternalToAbsolutePath(File.ToString());
 		CorruptedFiles.AddUnique(CorruptedFile);
 	}
 
@@ -116,7 +127,7 @@ void SProjectCleanerCorruptedFilesUI::SetCorruptedFiles(const TSet<FString>& New
 }
 
 TSharedRef<ITableRow> SProjectCleanerCorruptedFilesUI::OnGenerateRow(TWeakObjectPtr<UCorruptedFile> InItem,
-	const TSharedRef<STableViewBase>& OwnerTable) const
+                                                                     const TSharedRef<STableViewBase>& OwnerTable) const
 {
 	return SNew(SCorruptedFileUISelectionRow, OwnerTable).SelectedRowItem(InItem);
 }

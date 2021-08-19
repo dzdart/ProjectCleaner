@@ -2,10 +2,12 @@
 
 #pragma once
 
+#include "StructsContainer.h"
 // Engine Headers
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "StructsContainer.h"
+
+class FProjectCleanerManager;
 
 class SCorruptedFileUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UCorruptedFile>>
 {
@@ -55,11 +57,12 @@ class SProjectCleanerCorruptedFilesUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerCorruptedFilesUI) {}
-		SLATE_ARGUMENT(TSet<FString>*, CorruptedFiles);
+		SLATE_ARGUMENT(FProjectCleanerManager*, CleanerManager);
 	SLATE_END_ARGS()
 	
 	void Construct(const FArguments& InArgs);
-	void SetCorruptedFiles(const TSet<FString>& NewCorruptedFiles);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
+	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UCorruptedFile> InItem,
@@ -70,4 +73,5 @@ private:
 	/** Data **/
 	TArray<TWeakObjectPtr<UCorruptedFile>> CorruptedFiles;
 	TSharedPtr<SListView<TWeakObjectPtr<UCorruptedFile>>> ListView;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };
