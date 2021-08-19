@@ -7,30 +7,37 @@
 #include "AssetData.h"
 #include "StructsContainer.generated.h"
 
+class ICleanerUIActions
+{
+public:
+	virtual ~ICleanerUIActions() {}
+	
+	virtual void ExcludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual void ExcludeSelectedAssetsByType(const TArray<FAssetData>& Assets) = 0;
+	virtual bool IncludeSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual void IncludeAllAssets() = 0;
+	virtual bool ExcludePath(const FString& InPath) = 0;
+	virtual bool IncludePath(const FString& InPath) = 0;
+	virtual int32 DeleteSelectedAssets(const TArray<FAssetData>& Assets) = 0;
+	virtual int32 DeleteAllUnusedAssets() = 0;
+	virtual int32 DeleteEmptyFolders() = 0;
+};
+
 UCLASS(Transient)
 class UCleanerConfigs : public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(DisplayName = "Scan Developer Contents Folders", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Scan Developer Content", EditAnywhere, Category = "CleanerConfigs", meta = (ToolTip = "Scan assets in 'Developers' folder. By Default false"))
 	bool bScanDeveloperContents = false;
 
-	UPROPERTY(DisplayName = "Remove Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
+	UPROPERTY(DisplayName = "Delete Empty Folders After Assets Deleted", EditAnywhere, Category = "CleanerConfigs")
 	bool bAutomaticallyDeleteEmptyFolders = true;
-
-	UPROPERTY(DisplayName = "Deletion Chunk Limit", EditAnywhere, Category = "CleanerConfigs", meta = (ClampMin = "20", ClampMax = "1000", UIMin = "20", UIMax = "1000", ToolTip = "To prevent engine from freezing when deleting a lot of assets, we delete them by chunks.Here you can specify chunk limit.Pick lower values if your PC got low RAM capacity. Default is 20"))
-	int32 DeleteChunkLimit = 20;
-};
-
-UCLASS(Transient)
-class UExcludeOptions : public UObject
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "ExcludeOptions", meta = (ContentDir))
+	
+	UPROPERTY(DisplayName = "Paths", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions", meta = (ContentDir))
 	TArray<FDirectoryPath> Paths;
 
-	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "ExcludeOptions")
+	UPROPERTY(DisplayName = "Classes", EditAnywhere, Category = "CleanerConfigs|ExcludeOptions")
 	TArray<UClass*> Classes;
 };
 
@@ -63,14 +70,6 @@ public:
 	FString AbsolutePath;
 };
 
-struct FIndirectFileInfo
-{
-	FAssetData AssetData;
-	FString FileName;
-	FString FilePath;
-	int32 LineNum;
-};
-
 UCLASS(Transient)
 class UNonEngineFile : public UObject
 {
@@ -83,59 +82,13 @@ public:
 	FString FilePath;
 };
 
-struct FProjectCleanerData
+struct FIndirectAsset
 {
-	TArray<FAssetData> UnusedAssets;
-	TArray<FString> EmptyFolders;
-	TSet<FString> NonEngineFiles;
-	TSet<FString> CorruptedFiles;
-	TArray<FIndirectFileInfo> IndirectFileInfos;
-	TSet<FName> PrimaryAssetClasses;
-	TArray<FAssetData> UserExcludedAssets;
-	TArray<FAssetData> ExcludedAssets;
-	TArray<FAssetData> LinkedAssets;
-	int64 TotalSize;
+	FString File;
+	int32 Line;
+	FName RelativePath;
 
-	// Helpers for asset deletion stats
-	uint32 TotalAssetsNum;
-	uint32 DeletedAssetsNum;
-
-	FProjectCleanerData()
-	{
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
-	}
-
-	void Reset()
-	{
-		UnusedAssets.Reset();
-		EmptyFolders.Reset();
-		NonEngineFiles.Reset();
-		CorruptedFiles.Reset();
-		IndirectFileInfos.Reset();
-		PrimaryAssetClasses.Reset();
-		ExcludedAssets.Reset();
-		LinkedAssets.Reset();
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
-	}
-
-	void Empty()
-	{
-		UnusedAssets.Empty();
-		EmptyFolders.Empty();
-		NonEngineFiles.Empty();
-		CorruptedFiles.Empty();
-		IndirectFileInfos.Empty();
-		PrimaryAssetClasses.Empty();
-		ExcludedAssets.Empty();
-		LinkedAssets.Empty();
-		TotalSize = 0;
-		TotalAssetsNum = 0;
-		DeletedAssetsNum = 0;
-	}
+	FIndirectAsset(): File(FString{}), Line(0), RelativePath(NAME_None) {}
 };
 
 struct FStandardCleanerText
@@ -144,15 +97,23 @@ struct FStandardCleanerText
 	constexpr static TCHAR* AssetsDeleteWindowContent = TEXT("Are you sure you want to permanently delete unused assets?");
 	constexpr static TCHAR* EmptyFolderWindowTitle = TEXT("Confirm deletion of empty folders");
 	constexpr static TCHAR* EmptyFolderWindowContent = TEXT("Are you sure you want to delete all empty folders in project?");
-	constexpr static TCHAR* StartingCleanup = TEXT("Starting Cleanup. This could take some time, please wait");
+	constexpr static TCHAR* DeletingUnusedAssets = TEXT("Deleting unused assets...");
+	constexpr static TCHAR* DeletingEmptyFolders = TEXT("Deleting empty folders...");
 	constexpr static TCHAR* NoAssetsToDelete = TEXT("There are no assets to delete!");
 	constexpr static TCHAR* NoEmptyFolderToDelete = TEXT("There are no empty folders to delete!");
-	constexpr static TCHAR* NonUAssetFilesFound = TEXT("Project contains non engine files. Check Output Log for more info.");
-	constexpr static TCHAR* SearchingEmptyFolders = TEXT("Searching empty folders...");
-	constexpr static TCHAR* AssetsWithReferencersInDeveloperFolder = TEXT("Some of assets has references in Developers folder. To view them click 'Scan Developers Folder' checkbox.");
-	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Asset Registry still working! Please wait...");
-	constexpr static TCHAR* SomeAssetsHaveRefsInDevFolder = TEXT("Some assets have referencers in Developer Contents Folder.");
-	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include some filtered assets.Clear 'ExcludeOptions' filters and try again.");
-	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. See Output Log for more information.");
-	
+	constexpr static TCHAR* AssetRegistryStillWorking = TEXT("Please wait, AssetRegistry is loading assets");
+	constexpr static TCHAR* CantIncludeSomeAssets = TEXT("Cant include selected assets, because they are excluded by 'Exclude Options' filter.");
+	constexpr static TCHAR* CantIncludePath = TEXT("Cant include selected path, because they are excluded by 'Exclude Options' filter.");
+	constexpr static TCHAR* FailedToDeleteSomeFolders = TEXT("Failed to delete some folders. Open 'Output Log' for more information.");
+	constexpr static TCHAR* FailedToDeleteSomeAssets = TEXT("Failed to delete some assets");
+	constexpr static TCHAR* SearchingForUnusedAssets = TEXT("Searching for unused assets...");
+	constexpr static TCHAR* Scanning = TEXT("Scanning...");
+	constexpr static TCHAR* UnusedAssetsSuccessfullyDeleted = TEXT("Unused assets deleted successfully");
+	constexpr static TCHAR* FoldersSuccessfullyDeleted = TEXT("Empty folders deleted successfully");
+	constexpr static TCHAR* LoadingAssets = TEXT("Loading assets...");
+	constexpr static TCHAR* FixingUpRedirectors = TEXT("Fixing up redirectors...");
+	constexpr static TCHAR* AnalyzingAssets = TEXT("Analyzing unused assets...");
+	constexpr static TCHAR* PreparingAssetsForDeletion = TEXT("Preparing assets for deletion...");
+	constexpr static TCHAR* RestartEditorTitle = TEXT("Confirm Restart Editor");
+	constexpr static TCHAR* RestartEditorContent = TEXT("To finish project cleaning,its recommended to Restart Editor. Proceed?");
 };

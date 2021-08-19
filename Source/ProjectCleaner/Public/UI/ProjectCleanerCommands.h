@@ -13,6 +13,9 @@ public:
 	/** Commands **/
 	TSharedPtr<FUICommandInfo> OpenCleanerWindow;
 	TSharedPtr<FUICommandInfo> DeleteAsset;
-	TSharedPtr<FUICommandInfo> ExcludeAsset;
 	TSharedPtr<FUICommandInfo> IncludeAsset;
+	TSharedPtr<FUICommandInfo> IncludePath;
+	TSharedPtr<FUICommandInfo> ExcludeAsset;
+	TSharedPtr<FUICommandInfo> ExcludeByType;
+	TSharedPtr<FUICommandInfo> ExcludePath;
 };

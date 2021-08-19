@@ -4,21 +4,19 @@
 // Engine Headers
 #include "Framework/Notifications/NotificationManager.h"
 
-TWeakPtr<SNotificationItem> ProjectCleanerNotificationManager::Add(
-	const FString& Text,
-	const SNotificationItem::ECompletionState CompletionState
-)
+void ProjectCleanerNotificationManager::Add(
+	const FText& Text,
+	const SNotificationItem::ECompletionState CompletionState,
+	TWeakPtr<SNotificationItem>& NotificationPtr)
 {
-	FNotificationInfo Info(FText::FromString(Text));
+	FNotificationInfo Info(Text);
 	Info.bFireAndForget = false;
 
-	const TWeakPtr<SNotificationItem> NotificationManager = FSlateNotificationManager::Get().AddNotification(Info);
-	if (NotificationManager.IsValid())
+	NotificationPtr = FSlateNotificationManager::Get().AddNotification(Info);
+	if (NotificationPtr.IsValid())
 	{
-		NotificationManager.Pin()->SetCompletionState(CompletionState);
+		NotificationPtr.Pin()->SetCompletionState(CompletionState);
 	}
-
-	return NotificationManager;
 }
 
 void ProjectCleanerNotificationManager::AddTransient(
@@ -46,12 +44,15 @@ void ProjectCleanerNotificationManager::Update(TWeakPtr<SNotificationItem> Notif
 	}
 }
 
-void ProjectCleanerNotificationManager::Hide(TWeakPtr<SNotificationItem> NotificationManager, const FText& FinalText)
+void ProjectCleanerNotificationManager::Hide(
+	TWeakPtr<SNotificationItem> NotificationManager,
+	const SNotificationItem::ECompletionState CompletionState,
+	const FText& FinalText)
 {
 	if (!NotificationManager.IsValid()) return;
 
 	NotificationManager.Pin()->SetText(FinalText);
-	NotificationManager.Pin()->SetCompletionState(SNotificationItem::CS_Success);
+	NotificationManager.Pin()->SetCompletionState(CompletionState);
 	NotificationManager.Pin()->SetFadeOutDuration(5.0f);
 	NotificationManager.Pin()->Fadeout();
 }
@@ -62,4 +63,18 @@ void ProjectCleanerNotificationManager::Reset(TWeakPtr<SNotificationItem> Notifi
 
 	NotificationManager.Pin()->ExpireAndFadeout();
 	NotificationManager.Reset();
+}
+
+EAppReturnType::Type ProjectCleanerNotificationManager::ShowConfirmationWindow(const FText& Title, const FText& ContentText)
+{
+	return FMessageDialog::Open(
+		EAppMsgType::YesNo,
+		ContentText,
+		&Title
+	);
+}
+
+bool ProjectCleanerNotificationManager::IsConfirmationWindowCanceled(EAppReturnType::Type Status)
+{
+	return Status == EAppReturnType::Type::No || Status == EAppReturnType::Cancel;
 }

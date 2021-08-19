@@ -6,6 +6,8 @@
 #include "Widgets/SCompoundWidget.h"
 #include "StructsContainer.h"
 
+class FProjectCleanerManager;
+
 class SIndirectAssetsUISelectionRow : public SMultiColumnTableRow<TWeakObjectPtr<UIndirectAsset>>
 {
 public:
@@ -63,11 +65,12 @@ class SProjectCleanerIndirectAssetsUI : public SCompoundWidget
 public:
 	
 	SLATE_BEGIN_ARGS(SProjectCleanerIndirectAssetsUI) {}
-		SLATE_ARGUMENT(TArray<FIndirectFileInfo>* , IndirectFileInfos)
+		SLATE_ARGUMENT(FProjectCleanerManager* , CleanerManager)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
-	void SetIndirectFiles(const TArray<FIndirectFileInfo>& NewIndirectFileInfos);
+	void SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr);
+	void UpdateUI();
 private:
 	TSharedRef<ITableRow> OnGenerateRow(
 		TWeakObjectPtr<UIndirectAsset> InItem,
@@ -76,4 +79,5 @@ private:
 	void OnMouseDoubleClick(TWeakObjectPtr<UIndirectAsset> Item) const;
 	TArray<TWeakObjectPtr<UIndirectAsset>> IndirectAssets;
 	TSharedPtr<SListView<TWeakObjectPtr<UIndirectAsset>>> ListView;
+	FProjectCleanerManager* CleanerManager = nullptr;
 };

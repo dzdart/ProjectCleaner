@@ -2,6 +2,7 @@
 
 #include "UI/ProjectCleanerNonEngineFilesUI.h"
 #include "UI/ProjectCleanerStyle.h"
+#include "Core/ProjectCleanerManager.h"
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 
@@ -9,9 +10,9 @@
 
 void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._NonEngineFiles)
+	if (InArgs._CleanerManager)
 	{
-		SetNonEngineFiles(*InArgs._NonEngineFiles);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
 	ChildSlot
@@ -80,17 +81,27 @@ void SProjectCleanerNonEngineFilesUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerNonEngineFilesUI::SetNonEngineFiles(const TSet<FString>& NewNonEngineFile)
+void SProjectCleanerNonEngineFilesUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
-	NonEngineFiles.Reset();
-	NonEngineFiles.Reserve(NewNonEngineFile.Num());
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
+	
+	UpdateUI();
+}
 
-	for (const auto& File: NewNonEngineFile)
+void SProjectCleanerNonEngineFilesUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+	
+	NonEngineFiles.Reset();
+	NonEngineFiles.Reserve(CleanerManager->GetNonEngineFiles().Num());
+
+	for (const auto& File: CleanerManager->GetNonEngineFiles())
 	{
 		const auto& NonUassetFile = NewObject<UNonEngineFile>();
 		if(!NonUassetFile) continue;
-		NonUassetFile->FileName = FPaths::GetBaseFilename(File) + "." + FPaths::GetExtension(File);
-		NonUassetFile->FilePath = File;
+		NonUassetFile->FileName = FPaths::GetBaseFilename(File.ToString()) + "." + FPaths::GetExtension(File.ToString());
+		NonUassetFile->FilePath = File.ToString();
 		NonEngineFiles.AddUnique(NonUassetFile);
 	}
 

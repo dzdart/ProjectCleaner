@@ -5,15 +5,16 @@
 // Engine Headers
 #include "Widgets/Layout/SScrollBox.h"
 #include "IContentBrowserSingleton.h"
+#include "Core/ProjectCleanerManager.h"
 #include "Editor/ContentBrowser/Public/ContentBrowserModule.h"
 
 #define LOCTEXT_NAMESPACE "FProjectCleanerModule"
 
 void SProjectCleanerIndirectAssetsUI::Construct(const FArguments& InArgs)
 {
-	if (InArgs._IndirectFileInfos)
+	if (InArgs._CleanerManager)
 	{
-		SetIndirectFiles(*InArgs._IndirectFileInfos);
+		SetCleanerManager(InArgs._CleanerManager);
 	}
 
 	ChildSlot
@@ -111,18 +112,28 @@ void SProjectCleanerIndirectAssetsUI::Construct(const FArguments& InArgs)
 	];
 }
 
-void SProjectCleanerIndirectAssetsUI::SetIndirectFiles(const TArray<FIndirectFileInfo>& NewIndirectFileInfos)
+void SProjectCleanerIndirectAssetsUI::SetCleanerManager(FProjectCleanerManager* CleanerManagerPtr)
 {
-	IndirectAssets.Reset();
-	IndirectAssets.Reserve(NewIndirectFileInfos.Num());
+	if (!CleanerManagerPtr) return;
+	CleanerManager = CleanerManagerPtr;
+	
+	UpdateUI();
+}
 
-	for (const auto& IndirectFileInfo : NewIndirectFileInfos)
+void SProjectCleanerIndirectAssetsUI::UpdateUI()
+{
+	if (!CleanerManager) return;
+
+	IndirectAssets.Reset();
+	IndirectAssets.Reserve(CleanerManager->GetIndirectAssets().Num());
+
+	for (const auto& IndirectFile : CleanerManager->GetIndirectAssets())
 	{
-		auto IndirectAsset = NewObject<UIndirectAsset>();
-		IndirectAsset->AssetName = IndirectFileInfo.AssetData.AssetName.ToString();
-		IndirectAsset->AssetPath = IndirectFileInfo.AssetData.PackagePath.ToString();
-		IndirectAsset->FilePath = IndirectFileInfo.FilePath;
-		IndirectAsset->LineNum = IndirectFileInfo.LineNum;
+		const auto IndirectAsset = NewObject<UIndirectAsset>();
+		IndirectAsset->AssetName = IndirectFile.Key.AssetName.ToString();
+		IndirectAsset->AssetPath = IndirectFile.Value.RelativePath.ToString();
+		IndirectAsset->FilePath = IndirectFile.Value.File;
+		IndirectAsset->LineNum = IndirectFile.Value.Line;
 		
 		IndirectAssets.Add(IndirectAsset);
 	}
