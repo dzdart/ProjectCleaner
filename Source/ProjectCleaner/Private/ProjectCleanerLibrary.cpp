@@ -41,7 +41,7 @@ FString UProjectCleanerLibrary::GetAssetPathByPathType(const FAssetData& AssetDa
 
 	FString FinalPath{};
 	// Converts /Game/MyFolder/NewMaterial.NewMaterial => C:/dev/MyProject/Content/MyFolder/NewMaterial.NewMaterial
-	if (!FPackageName::TryConvertGameRelativePackagePathToLocalPath(AssetData.PackagePath.ToString(), FinalPath))
+	if (!FPackageName::TryConvertLongPackageNameToFilename(AssetData.PackagePath.ToString(), FinalPath))
 	{
 		return FinalPath;
 	}
